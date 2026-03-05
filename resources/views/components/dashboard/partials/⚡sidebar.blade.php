@@ -91,7 +91,7 @@ new class extends Component {
         <span class="text-xl font-bold text-white tracking-wide">HoyoDash</span>
     </div>
     <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-        <a href="#"
+        <a livewire:navigate href="{{ route('dashboard.home') }}"
             class="flex items-center space-x-3 px-3 py-2.5 bg-blue-600/10 text-blue-400 rounded-lg transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

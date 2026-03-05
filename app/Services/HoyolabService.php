@@ -268,4 +268,19 @@ class HoyolabService
             return [];
         }
     }
+
+    /**
+     * Converts epoch timestamp to date string.
+     * 
+     * @param string|int $epoch
+     * @param string $format
+     * @return string
+     */
+    public function epochconverter($epoch, string $format = 'd M Y, H:i'): string
+    {
+        if (empty($epoch)) {
+            return '-';
+        }
+        return \Carbon\Carbon::createFromTimestamp($epoch)->format($format);
+    }
 }

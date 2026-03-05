@@ -75,4 +75,111 @@ class GenshinService
             ];
         }
     }
+
+    /**
+     * Get Genshin Game Record Index from Hoyolab API
+     * Includes role, avatars, stats, city_explorations, world_explorations.
+     */
+    public function getGameRecordIndex(?string $cookie, string $role_id): array
+    {
+        if (empty($cookie) || empty($role_id)) {
+            return ['retcode' => -1, 'message' => 'Parameter tidak valid.'];
+        }
+
+        try {
+            $server = $this->hoyolabService->recognizeServer($role_id);
+        } catch (\Exception $e) {
+            return ['retcode' => -1, 'message' => 'UID tidak valid.'];
+        }
+
+        $headers = [
+            'Cookie' => $cookie,
+            'x-rpc-lang' => 'en-us',
+            'x-rpc-language' => 'en-us',
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ];
+
+        try {
+            $response = Http::withHeaders($headers)
+                ->get("https://sg-public-api.hoyolab.com/event/game_record/genshin/api/index", [
+                    'avatar_list_type' => 0,
+                    'server' => $server,
+                    'role_id' => $role_id,
+                ]);
+
+            $data = $response->json();
+
+            if (isset($data['message']) && $data['message'] === 'OK') {
+                return [
+                    'retcode' => 0,
+                    'message' => 'OK',
+                    'data' => $data['data'] ?? [],
+                ];
+            }
+
+            return [
+                'retcode' => $data['retcode'] ?? -1,
+                'message' => $data['message'] ?? 'Terjadi kesalahan dari API Hoyolab.',
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'retcode' => -1,
+                'message' => 'Terjadi kesalahan koneksi: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get Event Calendar from Hoyolab API
+     * Includes Event Wishes and Events Overview.
+     */
+    public function getEventCalendar(?string $cookie, string $role_id): array
+    {
+        if (empty($cookie) || empty($role_id)) {
+            return ['retcode' => -1, 'message' => 'Parameter tidak valid.'];
+        }
+
+        try {
+            $server = $this->hoyolabService->recognizeServer($role_id);
+        } catch (\Exception $e) {
+            return ['retcode' => -1, 'message' => 'UID tidak valid.'];
+        }
+
+        $headers = [
+            'Cookie' => $cookie,
+            'x-rpc-lang' => 'en-us',
+            'x-rpc-language' => 'en-us',
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ];
+
+        try {
+            $response = Http::withHeaders($headers)
+                ->post("https://sg-public-api.hoyolab.com/event/game_record/genshin/api/act_calendar", [
+                    'server' => $server,
+                    'role_id' => $role_id,
+                ]);
+
+            $data = $response->json();
+
+            if (isset($data['message']) && $data['message'] === 'OK') {
+                return [
+                    'retcode' => 0,
+                    'message' => 'OK',
+                    'data' => $data['data'] ?? [],
+                ];
+            }
+
+            return [
+                'retcode' => $data['retcode'] ?? -1,
+                'message' => $data['message'] ?? 'Terjadi kesalahan dari API Hoyolab.',
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'retcode' => -1,
+                'message' => 'Terjadi kesalahan koneksi: ' . $e->getMessage()
+            ];
+        }
+    }
 }
