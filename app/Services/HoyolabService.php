@@ -7,7 +7,43 @@ use Illuminate\Support\Facades\Http;
 class HoyolabService
 {
     protected string $baseUrl = 'https://api-os-takumi.hoyoverse.com';
+    
+    public function getUserFullInfo(?string $cookie): array
+    {
+        if (empty($cookie)) {
+            return [];
+        }
+        
+        try {
+            $response = Http::withHeaders([
+                'Cookie' => $cookie,
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept' => 'application/json, text/plain, */*',
+                'Accept-Encoding' => 'gzip, deflate, br',
+                'Connection' => 'keep-alive',
+                'origin' => 'https://act.hoyolab.com',
+                'Referer' => 'https://act.hoyolab.com/',
+                'x-rpc-lang' => 'en-us',
+                'x-rpc-language' => 'en-us',
+            ])->get('https://bbs-api-os.hoyolab.com/community/user/wapi/getUserFullInfo?gid=2');
 
+            $data = $response->json();
+            // dd($data);
+
+            if (isset($data['message']) && $data['message'] === 'OK') {
+                $userInfo = [
+                    'uid' => $data['data']['user_info']['uid'] ?? null,
+                    'nickname' => $data['data']['user_info']['nickname'] ?? null,
+                    'avatar'=>$data['data']['user_info']['avatar_url'] ?? 'https://ui-avatars.com/api/?name=Commander&background=2563eb&color=fff',
+                ];
+                return $userInfo;
+            }
+        } catch (\Exception $e) {
+            // handle error
+        }
+
+        return [];
+    }
     // Game Specific API Routes (Base URL for Announcements, Events, etc)
     const HK4E_URL = 'https://sg-hk4e-api.hoyoverse.com/common/hk4e_global/'; // Genshin Impact
     const NAP_URL  = 'https://sg-announcement-static.hoyoverse.com/common/nap_global/'; // Zenless Zone Zero (ZZZ)
@@ -179,12 +215,14 @@ class HoyolabService
         try {
             $response = Http::get($url, $params);
             $data = $response->json();
+            // dd($data);
             
             $newsList = [];
             
             // Format struktur respon getAnnList dari Hoyoverse
-            if (isset($data['data']['list']) && is_array($data['data']['list'])) {
-                foreach ($data['data']['list'] as $item) {
+            $listData = $data['data']['list'] ?? [];
+            if (!empty($listData) && is_array($listData)) {
+                foreach ($listData as $item) {
                     // Cek apakah data dibungkus kategori (mengandung array 'list' di dalamnya)
                     if (isset($item['list']) && is_array($item['list'])) {
                         $tag = $item['type_label'] ?? 'Berita';
@@ -208,7 +246,7 @@ class HoyolabService
                         // Data langsung berupa array of announcements (tanpa kategori)
                         $contentStripped = strip_tags($item['content'] ?? '');
                         // Gunakan subtitle, jika kosong ambil potongan text dari content
-                        $desc = !empty($item['subtitle']) ? $item['subtitle'] : ($contentStripped ? substr($contentStripped, 0, 100) . '...' : 'Baca selengkapnya di dalam game.');
+                        $desc = !empty($item['subtitle']) ? $item['subtitle'] : ($contentStripped ? mb_substr($contentStripped, 0, 100) . '...' : 'Baca selengkapnya di dalam game.');
 
                         $newsList[] = [
                             'game' => $gameBiz,
@@ -223,6 +261,7 @@ class HoyolabService
                     }
                 }
             }
+            // dd($newsList);
             return $newsList;
             
         } catch (\Exception $e) {

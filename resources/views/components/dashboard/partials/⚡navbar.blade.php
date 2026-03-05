@@ -3,13 +3,21 @@
 use Livewire\Component;
 
 new class extends Component {
-    public $user = [
-        // Using generic data for the overall profile for now.
-        // We'll update the user name if we find a nickname in the accounts later.
-        'name' => 'Commander',
-        'avatar' => 'https://ui-avatars.com/api/?name=Commander&background=2563eb&color=fff',
-        'hoyolab_id' => 'Active',
-    ];
+    // public $user = [
+    //     // Using generic data for the overall profile for now.
+    //     // We'll update the user name if we find a nickname in the accounts later.
+    //     'name' => 'Commander',
+    //     'avatar' => 'https://ui-avatars.com/api/?name=Commander&background=2563eb&color=fff',
+    //     'hoyolab_id' => 'Active',
+    // ];
+    public $user = [];
+    public function mount()
+    {
+        $Userinfo = session('hoyolab_user_info', []);
+        $this->user['name'] = $Userinfo['nickname'];
+        $this->user['avatar'] = $Userinfo['avatar'];
+        $this->user['hoyolab_id'] = $Userinfo['uid'];
+    }
 };
 ?>
 

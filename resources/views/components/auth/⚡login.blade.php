@@ -6,6 +6,7 @@ use App\Services\HoyolabService;
 
 new class extends Component {
     public $cookieVal = '';
+    public $userInfo = [];
     public $errorMessage = '';
 
     public function saveCookie(HoyolabService $hoyolabService)
@@ -36,11 +37,23 @@ new class extends Component {
                 }
             }
 
-            // Save the extracted accounts structure to the server's session temporarily
             session(['hoyolab_accounts' => $accounts]);
 
-            // Dispatch browser event to save the cookie to localStorage as requested.
-            $this->dispatch('cookie-validated', cookie: $this->cookieVal);
+            $hoyolabService = app(\App\Services\HoyolabService::class);
+            // Ambil info detail menggunakan cookie string langsung
+            $this->userInfo = $hoyolabService->getUserFullInfo($this->cookieVal);
+
+            // Simpan cookie ke dalam Session PHP backend agar HoyolabService dkk bisa ikut mengaksesnya via session('hoyolab_cookie')
+            session(['hoyolab_cookie' => $this->cookieVal]);
+            session(['hoyolab_user_info' => $this->userInfo]);
+
+            // Dispatch browser event to save the cookie and user info to localStorage
+            $this->dispatch('cookie-validated', [
+                'cookie' => $this->cookieVal,
+                'userInfo' => $this->userInfo
+            ]);
+
+
         } else {
             $this->errorMessage = $response['message'] ?? 'Cookie tidak valid atau sesi telah kedaluwarsa.';
             $this->dispatch('cookie-invalid');
@@ -106,7 +119,8 @@ new class extends Component {
                 <div class="mb-5">
                     <label class="block text-sm font-medium text-slate-300 mb-2" for="cookie">HoYoLAB Account
                         Cookie</label>
-                    <textarea id="cookie" wire:model="cookieVal" rows="4" placeholder="Paste ltoken, ltuid, dll di sini..."
+                    <textarea id="cookie" wire:model="cookieVal" rows="4"
+                        placeholder="Paste ltoken, ltuid, dll di sini..."
                         class="w-full bg-[#0b0f19]/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none"></textarea>
 
                     @if ($errorMessage)
@@ -121,8 +135,8 @@ new class extends Component {
                     <span wire:loading class="flex items-center">
                         <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg"
                             fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                stroke-width="4"></circle>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
                             <path class="opacity-75" fill="currentColor"
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                             </path>
@@ -141,19 +155,29 @@ new class extends Component {
 </div>
 
 @script
-    <script>
-        $wire.on('cookie-validated', ({
-            cookie
-        }) => {
-            // Simpan ke local storage user 
-            localStorage.setItem('hoyolab_cookie', cookie);
-            // Redirect ke dashboard
-            window.location.href = '{{ route('dashboard.home') }}';
-        });
+<script>
+    $wire.on('cookie-validated', (data) => {
+        // Pada Livewire 3 beda dengan v2, data params dibungkus dalam array
+        let payload = Array.isArray(data) ? data[0] : data;
 
-        // Hapus cookie bila kedaluwarsa atau invalid
-        $wire.on('cookie-invalid', () => {
-            localStorage.removeItem('hoyolab_cookie');
-        });
-    </script>
+        let cookieVal = payload.cookie || '';
+        let userInfo = payload.userInfo || null;
+
+        // Simpan ke local storage user 
+        if (cookieVal) {
+            localStorage.setItem('hoyolab_cookie', cookieVal);
+            if (userInfo) {
+                localStorage.setItem('hoyolab_user_info', JSON.stringify(userInfo));
+            }
+        }
+
+        // Redirect ke dashboard
+        window.location.href = '{{ route('dashboard.home') }}';
+    });
+
+    // Hapus cookie bila kedaluwarsa atau invalid
+    $wire.on('cookie-invalid', () => {
+        localStorage.removeItem('hoyolab_cookie');
+    });
+</script>
 @endscript

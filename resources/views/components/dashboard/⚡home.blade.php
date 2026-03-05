@@ -18,7 +18,6 @@ new #[Layout('layouts.dashboard')] class extends Component {
 
     public function mount()
     {
-        // Ambil data akun dari memori session yang disimpan saat Login
         $savedAccounts = session('hoyolab_accounts', []);
         $hoyolabService = app(\App\Services\HoyolabService::class);
 
@@ -72,22 +71,38 @@ new #[Layout('layouts.dashboard')] class extends Component {
 
             $gameNewsList = $hoyolabService->getNews($biz, $rawUid, $rawRegion, $rawLevel);
 
+
             if (!empty($gameNewsList)) {
                 // Batasi hanya 3 berita per game
                 $mappedNews[$gameName] = array_slice($gameNewsList, 0, 3);
             }
         }
 
+
         // Kalau ada session, gunakan itu. Kalau tidak ada, kosongkan.
         $this->games = $mappedGames;
         $this->news = $mappedNews;
+        // dd($mappedNews);
     }
 };
 ?>
 
 
 <!-- Main Body -->
-<div class="flex-1 overflow-y-auto p-8 lg:p-10 space-y-10">
+<div class="flex-1 overflow-y-auto p-8 lg:p-10 space-y-10" x-data="{
+    init() {
+        let cookie = localStorage.getItem('hoyolab_cookie');
+        let accounts = localStorage.getItem('hoyolab_accounts');
+        
+        if (!cookie) {
+            window.location.href = '{{ route('login') }}';
+            return;
+        }
+
+        // Trigger data load sending local storage purely to Backend Livewire
+        {{-- $wire.loadData(cookie, accounts); --}}
+    }
+}">
 
     <!-- Hero / Daily Summary Banner -->
     <section class="relative rounded-2xl overflow-hidden shadow-2xl shadow-blue-900/10">
@@ -98,9 +113,33 @@ new #[Layout('layouts.dashboard')] class extends Component {
 
         <div
             class="relative z-10 p-8 lg:p-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-10">
-            <div>
+            <div x-data="{
+                 userName: '{{ $user['name'] }}',
+                 init() {
+                     // Listener if Livewire updates the data
+                     Livewire.on('update-user-info', (data) => {
+                         let payload = Array.isArray(data) ? data[0] : data;
+                         if (payload && payload.userInfo) {
+                             localStorage.setItem('hoyolab_user_info', JSON.stringify(payload.userInfo));
+                             if (payload.userInfo.nickname) {
+                                 this.userName = payload.userInfo.nickname;
+                             }
+                         }
+                     });
+
+                     // Format fallback dr LocalStorage jika halaman baru diload cepat
+                     let savedInfo = localStorage.getItem('hoyolab_user_info');
+                     if(savedInfo) {
+                         try {
+                             let parsed = JSON.parse(savedInfo);
+                             if(parsed.nickname) this.userName = parsed.nickname;
+                         } catch(e) {}
+                     }
+                 }
+            }">
                 <h1 class="text-3xl lg:text-4xl font-bold text-white mb-2">Welcome Back, <span
-                        class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">{{ $user['name'] }}</span>
+                        class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300"
+                        x-text="userName"></span>
                 </h1>
                 <p class="text-slate-300 text-lg max-w-xl">Your daily commissions and expeditions await. Check
                     your real-time resins and trailblaze power below.</p>
@@ -146,7 +185,8 @@ new #[Layout('layouts.dashboard')] class extends Component {
                             <div>
                                 <h3 class="font-bold text-white leading-tight">{{ $game['name'] }}</h3>
                                 <p class="text-xs text-slate-400">UID: {{ $game['uid'] }} •
-                                    {{ $game['server'] }}</p>
+                                    {{ $game['server'] }}
+                                </p>
                             </div>
                         </div>
                         <span class="flex h-3 w-3 relative">
@@ -222,8 +262,7 @@ new #[Layout('layouts.dashboard')] class extends Component {
                     <div
                         class="{{ $build['bg'] }} border border-slate-700/50 rounded-xl p-4 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-pointer">
                         <div class="flex items-center space-x-4">
-                            <div
-                                class="w-12 h-12 bg-slate-800 rounded-lg shrink-0 border border-slate-600 shadow-inner">
+                            <div class="w-12 h-12 bg-slate-800 rounded-lg shrink-0 border border-slate-600 shadow-inner">
                             </div>
                             <div>
                                 <div class="flex items-center space-x-2">
@@ -233,7 +272,8 @@ new #[Layout('layouts.dashboard')] class extends Component {
                                         Tier</span>
                                 </div>
                                 <p class="text-xs text-slate-400 mt-1">{{ $build['game'] }} •
-                                    {{ $build['path'] }}</p>
+                                    {{ $build['path'] }}
+                                </p>
                             </div>
                         </div>
                         <div class="text-right">
@@ -259,8 +299,7 @@ new #[Layout('layouts.dashboard')] class extends Component {
                 @if (count($news) > 0)
                     @foreach ($news as $gameName => $gameNews)
                         <div class="border border-slate-700/50 rounded-xl overflow-hidden bg-[#1e293b]/30">
-                            <button
-                                @click="expanded = expanded === '{{ $gameName }}' ? null : '{{ $gameName }}'"
+                            <button @click="expanded = expanded === '{{ $gameName }}' ? null : '{{ $gameName }}'"
                                 class="w-full flex items-center justify-between p-4 bg-[#111827]/80 hover:bg-slate-700/30 transition-colors">
                                 <div class="flex items-center space-x-3">
                                     <span class="font-bold text-white">{{ $gameName }}</span>
@@ -268,10 +307,10 @@ new #[Layout('layouts.dashboard')] class extends Component {
                                         class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">{{ count($gameNews) }}</span>
                                 </div>
                                 <svg class="w-5 h-5 text-slate-400 transition-transform duration-200"
-                                    :class="expanded === '{{ $gameName }}' ? 'rotate-180 text-blue-400' : ''"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 9l-7 7-7-7"></path>
+                                    :class="expanded === '{{ $gameName }}' ? 'rotate-180 text-blue-400' : ''" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                                    </path>
                                 </svg>
                             </button>
 
@@ -298,10 +337,11 @@ new #[Layout('layouts.dashboard')] class extends Component {
                                                 </div>
                                                 <h3
                                                     class="text-white font-bold text-base sm:text-lg mb-2 group-hover:text-blue-300 transition-colors leading-tight">
-                                                    {{ $n['title'] }}</h3>
-                                                <p
-                                                    class="text-xs sm:text-sm text-slate-400 line-clamp-2 leading-relaxed">
-                                                    {{ $n['desc'] }}</p>
+                                                    {{ $n['title'] }}
+                                                </h3>
+                                                <p class="text-xs sm:text-sm text-slate-400 line-clamp-2 leading-relaxed">
+                                                    {{ $n['desc'] }}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
