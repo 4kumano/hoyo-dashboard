@@ -40,7 +40,7 @@ new class extends Component {
 
     <!-- Hero Section -->
     <section
-        class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden flex items-center justify-center min-h-[90vh]">
+        class="relative pt-24 pb-20 lg:pt-48 lg:pb-32 overflow-hidden flex items-center justify-center min-h-[90vh]">
         <!-- Background Glow -->
         <div
             class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none">
@@ -58,7 +58,7 @@ new class extends Component {
                 <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
                 Unofficial Hoyolab API Client
             </span>
-            <h1 class="text-5xl lg:text-7xl font-extrabold text-white tracking-tight mb-8 leading-tight">
+            <h1 class="text-4xl md:text-5xl lg:text-7xl font-extrabold text-white tracking-tight mb-8 leading-tight">
                 Your Ultimate Hub for <br class="hidden md:block" />
                 <span
                     class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-teal-400">All
@@ -159,7 +159,8 @@ new class extends Component {
                             class="w-full h-full bg-[#111827] rounded-full flex items-center justify-center overflow-hidden border-4 border-[#111827]">
                             <img src="https://upload-os-bbs.mihoyo.com/upload/2021/09/02/101683416/b3d5b22b6bb3b68b75e7a9e224e0f45a_5126300185989710385.png?x-oss-process=image/auto-orient,0/interlace,1/format,png"
                                 alt="Genshin Impact"
-                                class="w-3/4 object-contain group-hover:scale-110 transition-transform duration-500">
+                                class="w-3/4 object-contain group-hover:scale-110 transition-transform duration-500"
+                                loading="lazy">
                         </div>
                     </div>
                     <h4 class="mt-6 text-center font-bold text-white group-hover:text-teal-400 transition-colors">
@@ -174,7 +175,8 @@ new class extends Component {
                             class="w-full h-full bg-[#111827] rounded-full flex items-center justify-center overflow-hidden border-4 border-[#111827]">
                             <img src="https://upload-os-bbs.hoyolab.com/upload/2023/03/24/110967397/a5aaee7b243405d4d39f6fa11f440db7_6324888127017649563.png?x-oss-process=image/auto-orient,0/interlace,1/format,png"
                                 alt="Honkai: Star Rail"
-                                class="w-3/4 object-contain group-hover:scale-110 transition-transform duration-500">
+                                class="w-3/4 object-contain group-hover:scale-110 transition-transform duration-500"
+                                loading="lazy">
                         </div>
                     </div>
                     <h4 class="mt-6 text-center font-bold text-white group-hover:text-purple-400 transition-colors">
@@ -189,7 +191,8 @@ new class extends Component {
                             class="w-full h-full bg-[#111827] rounded-full flex items-center justify-center overflow-hidden border-4 border-[#111827]">
                             <img src="https://upload-os-bbs.hoyolab.com/upload/2023/11/03/110967397/c25efde4fa22dfc904e571424b9fcdd9_3638202999403444654.png?x-oss-process=image/auto-orient,0/interlace,1/format,png"
                                 alt="Zenless Zone Zero"
-                                class="w-3/4 object-contain group-hover:scale-110 transition-transform duration-500">
+                                class="w-3/4 object-contain group-hover:scale-110 transition-transform duration-500"
+                                loading="lazy">
                         </div>
                     </div>
                     <h4 class="mt-6 text-center font-bold text-white group-hover:text-lime-400 transition-colors">
@@ -202,7 +205,7 @@ new class extends Component {
     <!-- Footer CTA -->
     <footer class="bg-[#111827] border-t border-slate-800 pt-20 pb-10">
         <div class="max-w-4xl mx-auto px-6 text-center mb-16">
-            <h2 class="text-3xl font-bold text-white mb-6">Ready to enhance your journey?</h2>
+            <h2 class="text-2xl md:text-3xl font-bold text-white mb-6">Ready to enhance your journey?</h2>
             <p class="text-slate-400 mb-8 max-w-xl mx-auto">Join fellow Trailblazers, Travelers, and Proxies who use
                 HoyoDash to optimize their daily gameplay.</p>
             <a href="{{ route('login') }}" wire:navigate

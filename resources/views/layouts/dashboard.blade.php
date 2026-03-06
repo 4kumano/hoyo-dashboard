@@ -13,7 +13,7 @@
 </head>
 
 <body>
-    <div class="flex h-screen bg-[#0b0f19] text-slate-300 font-sans overflow-hidden">
+    <div x-data="{ sidebarOpen: false }" class="flex h-screen bg-[#0b0f19] text-slate-300 font-sans overflow-hidden">
         <livewire:dashboard.partials.sidebar />
 
         <!-- Main Content -->

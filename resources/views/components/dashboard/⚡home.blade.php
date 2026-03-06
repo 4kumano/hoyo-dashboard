@@ -71,13 +71,11 @@ new #[Layout('layouts.dashboard')] class extends Component {
 
             $gameNewsList = $hoyolabService->getNews($biz, $rawUid, $rawRegion, $rawLevel);
 
-
             if (!empty($gameNewsList)) {
                 // Batasi hanya 3 berita per game
                 $mappedNews[$gameName] = array_slice($gameNewsList, 0, 3);
             }
         }
-
 
         // Kalau ada session, gunakan itu. Kalau tidak ada, kosongkan.
         $this->games = $mappedGames;
@@ -89,11 +87,11 @@ new #[Layout('layouts.dashboard')] class extends Component {
 
 
 <!-- Main Body -->
-<div class="flex-1 overflow-y-auto p-8 lg:p-10 space-y-10" x-data="{
+<div class="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10 space-y-10" x-data="{
     init() {
         let cookie = localStorage.getItem('hoyolab_cookie');
         let accounts = localStorage.getItem('hoyolab_accounts');
-        
+
         if (!cookie) {
             window.location.href = '{{ route('login') }}';
             return;
@@ -114,30 +112,30 @@ new #[Layout('layouts.dashboard')] class extends Component {
         <div
             class="relative z-10 p-8 lg:p-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-10">
             <div x-data="{
-                 userName: '{{ $user['name'] }}',
-                 init() {
-                     // Listener if Livewire updates the data
-                     Livewire.on('update-user-info', (data) => {
-                         let payload = Array.isArray(data) ? data[0] : data;
-                         if (payload && payload.userInfo) {
-                             localStorage.setItem('hoyolab_user_info', JSON.stringify(payload.userInfo));
-                             if (payload.userInfo.nickname) {
-                                 this.userName = payload.userInfo.nickname;
-                             }
-                         }
-                     });
-
-                     // Format fallback dr LocalStorage jika halaman baru diload cepat
-                     let savedInfo = localStorage.getItem('hoyolab_user_info');
-                     if(savedInfo) {
-                         try {
-                             let parsed = JSON.parse(savedInfo);
-                             if(parsed.nickname) this.userName = parsed.nickname;
-                         } catch(e) {}
-                     }
-                 }
+                userName: '{{ $user['name'] }}',
+                init() {
+                    // Listener if Livewire updates the data
+                    Livewire.on('update-user-info', (data) => {
+                        let payload = Array.isArray(data) ? data[0] : data;
+                        if (payload && payload.userInfo) {
+                            localStorage.setItem('hoyolab_user_info', JSON.stringify(payload.userInfo));
+                            if (payload.userInfo.nickname) {
+                                this.userName = payload.userInfo.nickname;
+                            }
+                        }
+                    });
+            
+                    // Format fallback dr LocalStorage jika halaman baru diload cepat
+                    let savedInfo = localStorage.getItem('hoyolab_user_info');
+                    if (savedInfo) {
+                        try {
+                            let parsed = JSON.parse(savedInfo);
+                            if (parsed.nickname) this.userName = parsed.nickname;
+                        } catch (e) {}
+                    }
+                }
             }">
-                <h1 class="text-3xl lg:text-4xl font-bold text-white mb-2">Welcome Back, <span
+                <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">Welcome Back, <span
                         class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300"
                         x-text="userName"></span>
                 </h1>
@@ -180,7 +178,7 @@ new #[Layout('layouts.dashboard')] class extends Component {
                             <div
                                 class="w-10 h-10 rounded-xl bg-gradient-to-br {{ $game['color'] }} flex items-center justify-center p-0.5 shadow-md overflow-hidden">
                                 <img src="{{ $game['icon_url'] }}" alt="{{ $game['name'] }}"
-                                    class="w-full h-full object-cover rounded-[10px]">
+                                    class="w-full h-full object-cover rounded-[10px]" loading="lazy">
                             </div>
                             <div>
                                 <h3 class="font-bold text-white leading-tight">{{ $game['name'] }}</h3>
@@ -262,7 +260,8 @@ new #[Layout('layouts.dashboard')] class extends Component {
                     <div
                         class="{{ $build['bg'] }} border border-slate-700/50 rounded-xl p-4 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-pointer">
                         <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-slate-800 rounded-lg shrink-0 border border-slate-600 shadow-inner">
+                            <div
+                                class="w-12 h-12 bg-slate-800 rounded-lg shrink-0 border border-slate-600 shadow-inner">
                             </div>
                             <div>
                                 <div class="flex items-center space-x-2">
@@ -299,7 +298,8 @@ new #[Layout('layouts.dashboard')] class extends Component {
                 @if (count($news) > 0)
                     @foreach ($news as $gameName => $gameNews)
                         <div class="border border-slate-700/50 rounded-xl overflow-hidden bg-[#1e293b]/30">
-                            <button @click="expanded = expanded === '{{ $gameName }}' ? null : '{{ $gameName }}'"
+                            <button
+                                @click="expanded = expanded === '{{ $gameName }}' ? null : '{{ $gameName }}'"
                                 class="w-full flex items-center justify-between p-4 bg-[#111827]/80 hover:bg-slate-700/30 transition-colors">
                                 <div class="flex items-center space-x-3">
                                     <span class="font-bold text-white">{{ $gameName }}</span>
@@ -307,9 +307,10 @@ new #[Layout('layouts.dashboard')] class extends Component {
                                         class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">{{ count($gameNews) }}</span>
                                 </div>
                                 <svg class="w-5 h-5 text-slate-400 transition-transform duration-200"
-                                    :class="expanded === '{{ $gameName }}' ? 'rotate-180 text-blue-400' : ''" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                                    :class="expanded === '{{ $gameName }}' ? 'rotate-180 text-blue-400' : ''"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7">
                                     </path>
                                 </svg>
                             </button>
@@ -323,7 +324,8 @@ new #[Layout('layouts.dashboard')] class extends Component {
                                         @if (!empty($n['banner']))
                                             <div class="mb-3 rounded-lg overflow-hidden shrink-0 w-full h-32 md:h-40">
                                                 <img src="{{ $n['banner'] }}" alt="{{ $n['title'] }}"
-                                                    class="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300">
+                                                    class="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
+                                                    loading="lazy">
                                             </div>
                                         @endif
 
@@ -339,7 +341,8 @@ new #[Layout('layouts.dashboard')] class extends Component {
                                                     class="text-white font-bold text-base sm:text-lg mb-2 group-hover:text-blue-300 transition-colors leading-tight">
                                                     {{ $n['title'] }}
                                                 </h3>
-                                                <p class="text-xs sm:text-sm text-slate-400 line-clamp-2 leading-relaxed">
+                                                <p
+                                                    class="text-xs sm:text-sm text-slate-400 line-clamp-2 leading-relaxed">
                                                     {{ $n['desc'] }}
                                                 </p>
                                             </div>

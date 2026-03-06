@@ -182,4 +182,82 @@ class GenshinService
             ];
         }
     }
+
+    /**
+     * Get Character Detail from Hoyolab API
+     * Returns equipment and detailed stats for a specific character.
+     */
+    public function getCharacterDetail(?string $cookie, string $role_id, int $character_id): array
+    {
+        if (empty($cookie) || empty($role_id) || empty($character_id)) {
+            return ['retcode' => -1, 'message' => 'Parameter tidak valid.'];
+        }
+
+        try {
+            $server = $this->hoyolabService->recognizeServer($role_id);
+        } catch (\Exception $e) {
+            return ['retcode' => -1, 'message' => 'UID tidak valid.'];
+        }
+
+        $headers = [
+            'Cookie' => $cookie,
+            'x-rpc-lang' => 'en-us',
+            'x-rpc-language' => 'en-us',
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ];
+
+        try {
+            $response = Http::withHeaders($headers)
+                ->post("https://sg-public-api.hoyolab.com/event/game_record/genshin/api/character/detail", [
+                    'server' => $server,
+                    'role_id' => $role_id,
+                    'character_ids' => [$character_id],
+                ]);
+
+            $data = $response->json();
+
+            if (isset($data['message']) && $data['message'] === 'OK') {
+                $characterData = $data['data']['list'][0] ?? [];
+                
+                if (isset($data['data']['property_map'])) {
+                    $characterData['icon_stats'] = $this->IconStats($data['data']['property_map']);
+                }
+
+                return [
+                    'retcode' => 0,
+                    'message' => 'OK',
+                    'data' => $characterData,
+                ];
+            }
+
+            return [
+                'retcode' => $data['retcode'] ?? -1,
+                'message' => $data['message'] ?? 'Terjadi kesalahan dari API Hoyolab.',
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'retcode' => -1,
+                'message' => 'Terjadi kesalahan koneksi: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Map Property Icons
+     */
+    public function IconStats(array $propertyMap): array
+    {
+        $icons = [];
+        foreach ($propertyMap as $id => $prop) {
+            if (isset($prop['property_type'])) {
+                $icons[$prop['property_type']] = [
+                    'property_type' => $prop['property_type'],
+                    'name' => $prop['name'] ?? 'Unknown',
+                    'icon' => $prop['icon'] ?? '',
+                ];
+            }
+        }
+        return $icons;
+    }
 }
