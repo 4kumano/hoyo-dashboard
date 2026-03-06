@@ -2,8 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 
-new #[Layout('layouts.dashboard')] class extends Component {
+new #[Layout('layouts.dashboard')] #[Title('Dashboard')] class extends Component {
     public $user = [
         // Using generic data for the overall profile for now.
         // We'll update the user name if we find a nickname in the accounts later.
@@ -58,9 +59,13 @@ new #[Layout('layouts.dashboard')] class extends Component {
                 'color' => $color,
                 'icon_color' => $iconColor,
                 'icon_url' => $hoyolabService->getIcon($biz),
-                // Kita belum setup daily task API jadi sementara Resin dibuat null/Loading state
+                // Setup default daily task API
                 'resin' => '?',
                 'max_resin' => '?',
+                'resin_recovery_time' => '?',
+                'recovery_formatted' => '?',
+                'daily_task_finished' => '?',
+                'daily_task_total' => '?',
             ];
 
             // Setup Dummy News Structure per Game
@@ -80,7 +85,40 @@ new #[Layout('layouts.dashboard')] class extends Component {
         // Kalau ada session, gunakan itu. Kalau tidak ada, kosongkan.
         $this->games = $mappedGames;
         $this->news = $mappedNews;
-        // dd($mappedNews);
+    }
+
+    public function loadData($cookie)
+    {
+        $genshinService = app(\App\Services\GenshinService::class);
+        $mappedGames = $this->games;
+
+        foreach ($mappedGames as &$game) {
+            if ($game['name'] === 'Genshin Impact') {
+                $dailyNote = $genshinService->getDailyNote($cookie, $game['uid']);
+
+                if (isset($dailyNote['retcode']) && $dailyNote['retcode'] === 0) {
+                    $noteData = $dailyNote['data'] ?? [];
+                    $game['resin'] = $noteData['current_resin'] ?? '?';
+                    $game['max_resin'] = $noteData['max_resin'] ?? '?';
+
+                    $recoveryTime = $noteData['resin_recovery_time'] ?? 0;
+                    $game['resin_recovery_time'] = $recoveryTime;
+                    if (is_numeric($recoveryTime) && $recoveryTime > 0) {
+                        $hours = floor($recoveryTime / 3600);
+                        $minutes = floor(($recoveryTime % 3600) / 60);
+                        $game['recovery_formatted'] = "{$hours}h {$minutes}m";
+                    } else if ($recoveryTime == 0) {
+                        $game['recovery_formatted'] = "Fully capped";
+                    }
+
+                    if (isset($noteData['daily_task'])) {
+                        $game['daily_task_finished'] = $noteData['daily_task']['finished_num'] ?? 0;
+                        $game['daily_task_total'] = $noteData['daily_task']['total_num'] ?? 4;
+                    }
+                }
+            }
+        }
+        $this->games = $mappedGames;
     }
 };
 ?>
@@ -90,24 +128,25 @@ new #[Layout('layouts.dashboard')] class extends Component {
 <div class="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10 space-y-10" x-data="{
     init() {
         let cookie = localStorage.getItem('hoyolab_cookie');
-        let accounts = localStorage.getItem('hoyolab_accounts');
-
-        if (!cookie) {
+        let isLogin = localStorage.getItem('isLogin');
+        if (!cookie || !isLogin) {
             window.location.href = '{{ route('login') }}';
             return;
         }
 
         // Trigger data load sending local storage purely to Backend Livewire
-        {{-- $wire.loadData(cookie, accounts); --}}
+        $wire.loadData(cookie);
     }
 }">
 
     <!-- Hero / Daily Summary Banner -->
-    <section class="relative rounded-2xl overflow-hidden shadow-2xl shadow-blue-900/10">
+    <section name="Hero"
+        class="relative rounded-2xl overflow-hidden shadow-2xl shadow-blue-900/10 transform-gpu isolate">
         <div class="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-[#111827] z-0"></div>
         <!-- Decorative background elements -->
-        <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl z-0"></div>
-        <div class="absolute bottom-0 right-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl z-0"></div>
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl z-0 transform-gpu"></div>
+        <div class="absolute bottom-0 right-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl z-0 transform-gpu">
+        </div>
 
         <div
             class="relative z-10 p-8 lg:p-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-10">
@@ -218,7 +257,8 @@ new #[Layout('layouts.dashboard')] class extends Component {
                             @elseif($game['resin'] === '?')
                                 <p class="text-xs text-slate-500 mt-2">Connecting to game server...</p>
                             @else
-                                <p class="text-xs text-slate-400 mt-2">Recovers fully in ~4h 20m</p>
+                                <p class="text-xs text-slate-400 mt-2">Recovers fully in
+                                    ~{{ $game['recovery_formatted'] ?? '4h 20m' }}</p>
                             @endif
                         </div>
 
@@ -231,8 +271,14 @@ new #[Layout('layouts.dashboard')] class extends Component {
                                 </svg>
                                 <span class="text-sm text-slate-300">Daily Tasks</span>
                             </div>
-                            <span class="text-sm font-bold text-white">4 <span class="text-slate-500">/
-                                    4</span> <span class="text-green-400 ml-1">✓</span></span>
+                            <span
+                                class="text-sm font-bold text-white">{{ $game['daily_task_finished'] !== '?' ? $game['daily_task_finished'] : '-' }}
+                                <span class="text-slate-500">/
+                                    {{ $game['daily_task_total'] !== '?' ? $game['daily_task_total'] : '-' }}</span>
+                                @if(($game['daily_task_finished'] ?? 0) === ($game['daily_task_total'] ?? 4) && $game['daily_task_finished'] !== '?')
+                                    <span class="text-green-400 ml-1">✓</span>
+                                @endif
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -260,8 +306,7 @@ new #[Layout('layouts.dashboard')] class extends Component {
                     <div
                         class="{{ $build['bg'] }} border border-slate-700/50 rounded-xl p-4 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-pointer">
                         <div class="flex items-center space-x-4">
-                            <div
-                                class="w-12 h-12 bg-slate-800 rounded-lg shrink-0 border border-slate-600 shadow-inner">
+                            <div class="w-12 h-12 bg-slate-800 rounded-lg shrink-0 border border-slate-600 shadow-inner">
                             </div>
                             <div>
                                 <div class="flex items-center space-x-2">
@@ -298,8 +343,7 @@ new #[Layout('layouts.dashboard')] class extends Component {
                 @if (count($news) > 0)
                     @foreach ($news as $gameName => $gameNews)
                         <div class="border border-slate-700/50 rounded-xl overflow-hidden bg-[#1e293b]/30">
-                            <button
-                                @click="expanded = expanded === '{{ $gameName }}' ? null : '{{ $gameName }}'"
+                            <button @click="expanded = expanded === '{{ $gameName }}' ? null : '{{ $gameName }}'"
                                 class="w-full flex items-center justify-between p-4 bg-[#111827]/80 hover:bg-slate-700/30 transition-colors">
                                 <div class="flex items-center space-x-3">
                                     <span class="font-bold text-white">{{ $gameName }}</span>
@@ -307,10 +351,9 @@ new #[Layout('layouts.dashboard')] class extends Component {
                                         class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">{{ count($gameNews) }}</span>
                                 </div>
                                 <svg class="w-5 h-5 text-slate-400 transition-transform duration-200"
-                                    :class="expanded === '{{ $gameName }}' ? 'rotate-180 text-blue-400' : ''"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 9l-7 7-7-7">
+                                    :class="expanded === '{{ $gameName }}' ? 'rotate-180 text-blue-400' : ''" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
                                     </path>
                                 </svg>
                             </button>
@@ -341,8 +384,7 @@ new #[Layout('layouts.dashboard')] class extends Component {
                                                     class="text-white font-bold text-base sm:text-lg mb-2 group-hover:text-blue-300 transition-colors leading-tight">
                                                     {{ $n['title'] }}
                                                 </h3>
-                                                <p
-                                                    class="text-xs sm:text-sm text-slate-400 line-clamp-2 leading-relaxed">
+                                                <p class="text-xs sm:text-sm text-slate-400 line-clamp-2 leading-relaxed">
                                                     {{ $n['desc'] }}
                                                 </p>
                                             </div>

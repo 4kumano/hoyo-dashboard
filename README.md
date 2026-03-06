@@ -1,59 +1,96 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# HoyoDash 🌟
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+HoyoDash adalah sebuah dashboard interaktif berbasis web yang elegan dan modern untuk memantau statistik akun game HoYoverse Anda (Genshin Impact, Honkai: Star Rail, Honkai Impact 3rd, dan Zenless Zone Zero) dalam satu tempat.
 
-## About Laravel
+Aplikasi ini menggunakan teknologi Laravel, Livewire, Alpine.js, dan didesain secara khusus menggunakan Tailwind CSS untuk memberikan antarmuka pengguna _(user interface)_ bergaya transparan _(glassmorphism)_ yang indah dan mulus.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🔥 Fitur Utama
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Multi-Game Support**: Mendukung data dari berbagai game HoYoverse secara langsung menggunakan API internal HoYoLAB.
+- **Login via Cookie**: Tidak perlu memasukkan _password_. Cukup berikan _cookie_ HoYoLAB browser Anda untuk mendapatkan akses yang aman secara _read-only_ karena seluruh data Anda hanya disimpan di _local storage_ Anda sendiri.
+- **Daily Note (Real-Time)**: Pantau _Original Resin_, _Trailblaze Power_, _Expeditions_, _Realm Currency/Serenitea Pot_, serta _Parametric Transformer_ tanpa harus membuka game.
+- **Game Stats Overview**: Lihat ringkasan akun Anda (Level, Spiral Abyss, jumlah karakter, peti yang diklaim, persentase eksplorasi map, hingga penyelesaian _quest_).
+- **Koleksi Karakter**: Tinjau karakter-karakter yang Anda miliki beserta _Weapon_ dan Relik-nya.
+- **Event Calendar**: Dapatkan pemberitahuan mengenai _Event Wishes_ terbaru dan _overview_ dari semua _event_ yang saat ini sedang berlangsung di tiap game.
+- **Dark Mode Modern Aesthetic**: Desain warna bernuansa gradasi neon dengan fokus visual UX yang detail dan terkesan eksklusif.
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## 🛠️ Tech Stack
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **[Laravel 12.x](https://laravel.com/)**: Framework mumpuni pada sisi server backend (_PHP_).
+- **[Livewire 4](https://livewire.laravel.com/)**: Untuk membuat antarmuka web dinamis _(Single Page Application feel)_ tanpa harus menulis banyak _Vanilla JavaScript_ atau _Vue/React_.
+- **[Alpine.js](https://alpinejs.dev/)**: Untuk interaksi UI minimalis yang efisien dan responsif (_dropdown_, akordion, tabulasi, dsb).
+- **[Tailwind CSS](https://tailwindcss.com/)**: Sistem styling utilitas _Utility-First CSS_ super-cepat dengan kapabilitas desain kustom tanpa hambatan.
+- **Guzzle / cURL**: _Library_ backend untuk menyambungkan permintaan _(request)_ ke Endpoint Rest API resmi dari HoYoLAB (via `api-os.hoyolab.com`).
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 🚀 Instalasi & Persiapan
 
-### Premium Partners
+1. **Clone repositori ini:**
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+    ```bash
+    git clone https://github.com/akumano/hoyodash.git
+    cd hoyodash
+    ```
 
-## Contributing
+2. **Instal dependensi Composer dan NPM:**
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+    ```bash
+    composer install
+    npm install
+    ```
 
-## Code of Conduct
+3. **Salin _environment_ variable (Env) file:**
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+    ```bash
+    cp .env.example .env
+    ```
 
-## Security Vulnerabilities
+4. **Kompilasi _frontend assets_:**
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+    ```bash
+    npm run build
+    ```
 
-## License
+    _(Atau jalankan `npm run dev` jika Anda ingin sambil memodifikasi tampilannya)._
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+5. **Generate Kunci Aplikasi _(App Key)_:**
+
+    ```bash
+    php artisan key:generate
+    ```
+
+6. **Jalankan Server Lokal:**
+    ```bash
+    php artisan serve
+    ```
+    Kini Anda dapat membuka: `http://localhost:8000` di peramban Anda.
+
+---
+
+## 🍪 Cara Login (Mendapatkan HoYoLAB Cookie)
+
+Proyek ini tidak menyimpan data sensitif Anda ke _database_ server lokal. Aplikasi hanya berjalan sebagai saluran langsung antara Browser Anda dan API dari _HoYoverse_.
+
+1. Buka situs [www.hoyolab.com](https://www.hoyolab.com) dan selesaikan **Log in**.
+2. **Klik kanan** untuk membuka _Developer Tools_ (atau tekan `Ctrl`+`Shift`+`I` / `F12` lalu klik _Inspect_).
+3. Buka tab berjudul **Application**.
+4. Di panel sebelah kiri, temukan opsi **Storage > Cookies**, lalu pilih `https://www.hoyolab.com`.
+5. Cari _key_ berikut dan salin isi tiap _valuenya_:
+   `account_id_v2`, `account_mid_v2`, `cookie_token_v2`, `ltmid_v2`, `ltoken_v2`, `ltuid_v2`
+6. Susun dan tempel di formulir _Login HoyoDash_ menggunakan format seperti ini:
+   `account_id_v2=XXXX; account_mid_v2=XXXX; cookie_token_v2=XXXX; ltmid_v2=XXXX; ltoken_v2=XXXX; ltuid_v2=XXXX;`
+
+---
+
+## 👨‍💻 Kontribusi
+
+Segala bentuk _Issues_ dan _Pull Requests_ sangat dipersilakan untuk memperluas kapabilitas dari HoYoDash. Semua kontribusi Anda akan saya jadikan evaluasi.
+
+## 📝 Lisensi
+
+Proyek **HoyoDash** adalah perangkat lunak sumber terbuka (Open Source) yang dilisensikan di bawah [Lisensi MIT](https://opensource.org/licenses/MIT). Data game Genshin Impact, Honkai: Star Rail, Zenless Zone Zero, serta maskot yang bersangkutan adalah properti terdaftar yang dimiliki oleh **COGNOSPHERE PTE. LTD. / HoYoverse**.

@@ -2,8 +2,9 @@
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 
-new class extends Component {
+new #[Layout('layouts.app')] #[Title('Home - Hoyo Dashboard')] class extends Component {
     //
 };
 ?>
@@ -14,17 +15,21 @@ new class extends Component {
         class="fixed w-full z-50 top-0 transition-all duration-300 backdrop-blur-md bg-[#0b0f19]/80 border-b border-slate-800/50">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 h-20 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <svg class="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-                    <path
-                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-5l5 2.5-5 2.5z" />
+                <svg class="w-8 h-8 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)] shrink-0" viewBox="0 0 24 24" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"
+                        class="fill-teal-500/20 stroke-teal-500" stroke-width="1.5" stroke-linejoin="round" />
+                    <path d="M12 6L13.5 10.5L18 12L13.5 13.5L12 18L10.5 13.5L6 12L10.5 10.5L12 6Z"
+                        class="fill-teal-400" />
+                    <circle cx="12" cy="12" r="1.5" class="fill-white" />
                 </svg>
-                <span class="text-2xl font-bold text-white tracking-wide">HoyoDash</span>
+                <span
+                    class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent tracking-wide">HoyoDash</span>
             </div>
             <div class="hidden md:flex items-center gap-8">
                 <a href="#features"
                     class="text-sm font-medium text-slate-300 hover:text-white transition-colors">Features</a>
-                <a href="#games"
-                    class="text-sm font-medium text-slate-300 hover:text-white transition-colors">Games</a>
+                <a href="#games" class="text-sm font-medium text-slate-300 hover:text-white transition-colors">Games</a>
             </div>
             <div class="flex items-center gap-4">
                 <a href="{{ route('login') }}" wire:navigate

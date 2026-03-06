@@ -2,12 +2,14 @@
 
 use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use App\Services\HoyolabService;
 
-new class extends Component {
+new #[Layout('layouts.app')] #[Title('Login - Hoyo Dashboard')] class extends Component {
     public $cookieVal = '';
     public $userInfo = [];
     public $errorMessage = '';
+    public $isLogin = false;
 
     public function saveCookie(HoyolabService $hoyolabService)
     {
@@ -37,6 +39,10 @@ new class extends Component {
                 }
             }
 
+            $this->isLogin = true;
+
+
+            session(['isLogin' => $this->isLogin]);
             session(['hoyolab_accounts' => $accounts]);
 
             $hoyolabService = app(\App\Services\HoyolabService::class);
@@ -50,13 +56,23 @@ new class extends Component {
             // Dispatch browser event to save the cookie and user info to localStorage
             $this->dispatch('cookie-validated', [
                 'cookie' => $this->cookieVal,
-                'userInfo' => $this->userInfo
+                'userInfo' => $this->userInfo,
+                'isLogin' => $this->isLogin
+            ]);
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Cookie berhasil di validasi.'
             ]);
 
 
         } else {
             $this->errorMessage = $response['message'] ?? 'Cookie tidak valid atau sesi telah kedaluwarsa.';
             $this->dispatch('cookie-invalid');
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Cookie tidak valid atau sesi telah kedaluwarsa.'
+            ]);
         }
     }
 
@@ -72,7 +88,8 @@ new class extends Component {
 <div x-data="{
     init() {
         let savedCookie = localStorage.getItem('hoyolab_cookie');
-        if (savedCookie) {
+        let isLogin = localStorage.getItem('isLogin');
+        if (isLogin) {
             // Jangan panggil berkali-kali jika sudah ada error
             $wire.autoLogin(savedCookie);
         }
@@ -91,10 +108,15 @@ new class extends Component {
             class="bg-[#1e293b]/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
             <div class="text-center mb-8">
                 <div
-                    class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 mb-4 shadow-inner">
-                    <svg class="w-8 h-8 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
-                        <path
-                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-5l5 2.5-5 2.5z" />
+                    class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-blue-500/20 border border-teal-500/30 mb-4 shadow-inner relative overflow-hidden">
+                    <div class="absolute inset-0 bg-teal-400/10 blur-xl"></div>
+                    <svg class="w-8 h-8 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)] relative z-10 shrink-0"
+                        viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"
+                            class="fill-teal-500/20 stroke-teal-500" stroke-width="1.5" stroke-linejoin="round" />
+                        <path d="M12 6L13.5 10.5L18 12L13.5 13.5L12 18L10.5 13.5L6 12L10.5 10.5L12 6Z"
+                            class="fill-teal-400" />
+                        <circle cx="12" cy="12" r="1.5" class="fill-white" />
                     </svg>
                 </div>
                 <h1 class="text-2xl font-bold text-white mb-2">Login to HoyoDash</h1>
@@ -132,7 +154,7 @@ new class extends Component {
                     class="w-full relative flex justify-center items-center py-3.5 px-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20 hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     wire:loading.attr="disabled">
                     <span wire:loading.remove>Connect Account</span>
-                    <span wire:loading class="flex items-center">
+                    <span wire:loading class="flex justify-items-center">
                         <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg"
                             fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
@@ -146,9 +168,84 @@ new class extends Component {
                 </button>
             </form>
 
-            <div class="mt-6 text-center">
-                <a href="#" class="text-xs text-slate-500 hover:text-blue-400 transition-colors">Cara mendapatkan
-                    HoYoLAB Cookie?</a>
+            <!-- Tutorial Accordion -->
+            <div class="mt-6 pt-5 border-t border-slate-700/50" x-data="{ expanded: false }">
+                <button @click="expanded = !expanded" type="button"
+                    class="w-full flex items-center justify-between text-sm text-slate-400 hover:text-blue-400 transition-colors group">
+                    <span class="flex items-center gap-2 font-medium">
+                        <svg class="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                        Cara mendapatkan HoYoLAB Cookie?
+                    </span>
+                    <svg class="w-4 h-4 text-slate-500 transition-transform duration-300"
+                        :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+
+                <!-- Expanded Content -->
+                <div x-show="expanded" x-collapse style="display: none;"
+                    class="mt-4 text-left bg-[#0b0f19]/70 p-4 rounded-xl border border-slate-700/50 text-xs text-slate-300 space-y-3 shadow-inner">
+
+                    <p class="font-medium text-white mb-1">Ikuti panduan berikut ini di laptop/PC Anda:</p>
+
+                    <ol class="list-decimal pl-4 space-y-2 marker:text-blue-500 marker:font-bold">
+                        <li class="leading-relaxed">
+                            Buka situs resmi <a href="https://www.hoyolab.com/" target="_blank"
+                                class="text-blue-400 hover:underline font-medium">HoYoLAB</a> dan selesaikan <strong>Log
+                                In</strong> menggunakan akun game Anda terlebih dahulu.
+                        </li>
+                        <li class="leading-relaxed">
+                            Setelah berhasil masuk (halaman beranda terbuka), <strong>Klik Kanan</strong> di mana saja
+                            pada layar dan pilih <strong class="text-white">Inspect</strong> (atau tekan tombol <kbd
+                                class="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-slate-300">F12</kbd>
+                            / <kbd
+                                class="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-slate-300">Ctrl+Shift+I</kbd>).
+                        </li>
+                        <li class="leading-relaxed">
+                            Pada bar navigasi di bagian paling atas kolom <em>Developer Tools</em>, cari dan klik tab
+                            bernama <strong class="text-teal-400">Application</strong> (jika tidak terlihat, klik tanda
+                            panah <code class="text-slate-400">&gt;&gt;</code> di ujung kanan).
+                        </li>
+                        <li class="leading-relaxed">
+                            Pada menu sebelah kiri, gulir ke arah bagian <strong>Storage</strong>, perbesar folder
+                            <strong class="text-white">Cookies</strong>, dan klik tautan <code
+                                class="text-slate-400">https://www.hoyolab.com</code>.
+                        </li>
+                        <li class="leading-relaxed">
+                            Cari teks-teks berikut ini di dalam kolom <strong>Name</strong>, klik dua-kali pada kolom
+                            <strong>Value</strong>-nya, dan salin nilainya lalu tempelkan seluruh nilainya secara
+                            berderet <em>(dipisah dengan titik koma <code>;</code>)</em> ke dalam isian <em>form</em> di
+                            atas:
+                            <div
+                                class="mt-2 flex flex-wrap gap-1.5 px-2 py-1.5 bg-slate-800/80 rounded-lg border border-slate-700 font-mono text-[10px] text-blue-300">
+                                <span>account_id_v2=XXXX;</span>
+                                <span>account_mid_v2=XXXX;</span>
+                                <span>cookie_token_v2=XXXX;</span>
+                                <span>ltmid_v2=XXXX;</span>
+                                <span>ltoken_v2=XXXX;</span>
+                                <span>ltuid_v2=XXXX;</span>
+                            </div>
+                        </li>
+                    </ol>
+
+                    <div class="mt-3 pt-3 border-t border-slate-700/50 text-[10px] text-slate-400 flex gap-2">
+                        <svg class="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>
+                            Contoh gabungan akhir: <code
+                                class="text-slate-500">ltoken_v2=v2...; ltuid_v2=80...; cookie_token_v2=v2...;</code>
+                            (harus berisi parameter tersebut secara lengkap agar bisa mengambil data yang valid).
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -162,6 +259,7 @@ new class extends Component {
 
         let cookieVal = payload.cookie || '';
         let userInfo = payload.userInfo || null;
+        let isLogin = payload.isLogin || false;
 
         // Simpan ke local storage user 
         if (cookieVal) {
@@ -169,6 +267,10 @@ new class extends Component {
             if (userInfo) {
                 localStorage.setItem('hoyolab_user_info', JSON.stringify(userInfo));
             }
+        }
+
+        if (isLogin) {
+            localStorage.setItem('isLogin', isLogin);
         }
 
         // Redirect ke dashboard

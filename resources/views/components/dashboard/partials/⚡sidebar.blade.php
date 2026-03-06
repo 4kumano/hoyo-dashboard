@@ -91,11 +91,16 @@ new class extends Component {
         class="absolute z-50 w-64 bg-[#111827] border-r border-slate-800 flex flex-col h-full transition-transform duration-300 md:relative md:translate-x-0">
         <div class="h-16 flex items-center justify-between px-6 border-b border-slate-800">
             <div class="flex items-center">
-                <svg class="w-8 h-8 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                    <path
-                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-5l5 2.5-5 2.5z" />
+                <svg class="w-8 h-8 mr-2 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)] shrink-0" viewBox="0 0 24 24"
+                    fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"
+                        class="fill-teal-500/20 stroke-teal-500" stroke-width="1.5" stroke-linejoin="round" />
+                    <path d="M12 6L13.5 10.5L18 12L13.5 13.5L12 18L10.5 13.5L6 12L10.5 10.5L12 6Z"
+                        class="fill-teal-400" />
+                    <circle cx="12" cy="12" r="1.5" class="fill-white" />
                 </svg>
-                <span class="text-xl font-bold text-white tracking-wide">HoyoDash</span>
+                <span
+                    class="text-xl font-bold bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent tracking-wide">HoyoDash</span>
             </div>
             <button @click="sidebarOpen = false" class="md:hidden text-slate-400 hover:text-white">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,7 +164,7 @@ new class extends Component {
                 <span class="font-medium">Interactive Map</span>
             </a>
         </nav>
-        <div class="p-4 border-t border-slate-800">
+        <div class="p-4 border-t border-slate-800 space-y-3">
             <a href="#" class="flex items-center space-x-3 text-slate-400 hover:text-white transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -170,6 +175,19 @@ new class extends Component {
                 </svg>
                 <span class="font-medium">Settings</span>
             </a>
+            <button @click.prevent="
+                    localStorage.removeItem('hoyolab_cookie');
+                    localStorage.removeItem('hoyolab_user_info');
+                    localStorage.setItem('isLogin', 'false');
+                    window.location.href = '{{ route('login') }}';
+                " class="w-full flex items-center space-x-3 text-red-400 hover:text-red-300 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                    </path>
+                </svg>
+                <span class="font-medium">Logout</span>
+            </button>
         </div>
     </aside>
 
