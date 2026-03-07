@@ -1,8 +1,12 @@
-/vendor
 /node_modules
 /.git
 /.env
+/.env.backup
+/.env.production
 /tests
+/.agents
+/.agent
+/.phpunit.cache
 /storage/framework/cache/data/*
 /storage/framework/sessions/*
 /storage/framework/testing/*

@@ -1,9 +1,14 @@
 {
     "version": 2,
+    "buildCommand": "npm install && npm run build",
+    "outputDirectory": "public",
     "builds": [
         {
             "src": "api/index.php",
-            "use": "vercel-php@0.6.2"
+            "use": "vercel-php@0.8.0",
+            "config": {
+                "maxLambdaSize": "50mb"
+            }
         },
         {
             "src": "public/**",
@@ -11,6 +16,14 @@
         }
     ],
     "routes": [
+        {
+            "src": "/favicon.ico",
+            "dest": "/public/favicon.ico"
+        },
+        {
+            "src": "/robots.txt",
+            "dest": "/public/robots.txt"
+        },
         {
             "src": "/build/(.*)",
             "dest": "/public/build/$1"
@@ -23,6 +36,9 @@
     "env": {
         "APP_ENV": "production",
         "APP_DEBUG": "false",
+        "APP_CONFIG_CACHE": "/tmp/config.php",
+        "APP_ROUTES_CACHE": "/tmp/routes.php",
+        "APP_EVENTS_CACHE": "/tmp/events.php",
         "CACHE_STORE": "array",
         "SESSION_DRIVER": "cookie",
         "QUEUE_CONNECTION": "sync",
