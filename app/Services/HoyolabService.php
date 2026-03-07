@@ -215,4 +215,136 @@ class HoyolabService
         }
         return \Carbon\Carbon::createFromTimestamp($epoch)->format($format);
     }
+
+    /**
+     * Fetch and parse active redeem codes from Hoyolab guide/material API.
+     * No cookie required.
+     *
+     * @param int $gameId  Game ID (2 = Genshin Impact, 6 = Honkai: Star Rail, 8 = Zenless Zone Zero)
+     * @return array{retcode: int, message: string, codes?: string[]}
+     */
+    public function parseByHoyolab(int $gameId = 2): array
+    {
+        try {
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            ])->get('https://bbs-api-os.hoyolab.com/community/painter/wapi/circle/channel/guide/material', [
+                'game_id' => $gameId,
+            ]);
+
+            $data = $response->json();
+
+            if (!isset($data['data']['modules'])) {
+                return [
+                    'retcode' => $data['retcode'] ?? -1,
+                    'message' => $data['message'] ?? 'Gagal mengambil data modul.',
+                ];
+            }
+
+            $codes = [];
+
+            foreach ($data['data']['modules'] as $module) {
+                $exchangeGroup = $module['exchange_group'] ?? null;
+                if ($exchangeGroup === null) {
+                    continue;
+                }
+
+                $bonuses = $exchangeGroup['bonuses'] ?? [];
+                foreach ($bonuses as $bonus) {
+                    $rawCode = $bonus['exchange_code'] ?? '';
+                    $code = $this->sanitizeCode($rawCode);
+                    if (!empty($code)) {
+                        $codes[] = $code;
+                    }
+                }
+            }
+
+            return [
+                'retcode' => 0,
+                'message' => 'OK',
+                'codes' => $codes,
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'retcode' => -1,
+                'message' => 'Terjadi kesalahan koneksi: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Sanitize a raw redeem code string.
+     * Removes URLs, bracket indices, "Quick Redeem", "NEW!" text, then uppercases.
+     */
+    public function sanitizeCode(string $code): string
+    {
+        if (str_contains($code, '/')) {
+            $code = explode('/', $code, 2)[0];
+        }
+
+        if (str_contains($code, ';')) {
+            $code = explode(';', $code, 2)[0];
+        }
+
+        $code = preg_replace('/\[\d+\]/', '', $code);
+        $code = str_replace(['Quick Redeem', 'NEW!'], '', $code);
+
+        return strtoupper(trim($code));
+    }
+
+    /**
+     * Validate a redeem code response retcode.
+     *
+     * @param int $retcode
+     * @return array{status: string, description: string}
+     */
+    public function validateRedeemResponse(int $retcode): array
+    {
+        // Valid: successfully redeemed or already redeemed (still active)
+        if (in_array($retcode, [0, -2017, -2018, -2021, -2011])) {
+            $descriptions = [
+                0     => 'Code redeemed successfully.',
+                -2017 => 'Code already redeemed.',
+                -2018 => 'Code already redeemed.',
+                -2021 => 'Game level too low, but code is valid.',
+                -2011 => 'Game level too low, but code is valid.',
+            ];
+            return ['status' => 'valid', 'description' => $descriptions[$retcode]];
+        }
+
+        // Expired
+        if ($retcode === -2001) {
+            return ['status' => 'expired', 'description' => 'Code has expired.'];
+        }
+
+        // Invalid / does not exist
+        if (in_array($retcode, [-1065, -2003, -2004, -2006, -2014])) {
+            $descriptions = [
+                -1065 => 'Invalid code.',
+                -2003 => 'Incorrectly formatted code.',
+                -2004 => 'Invalid code.',
+                -2006 => 'Max usage limit reached.',
+                -2014 => 'Code not activated yet.',
+            ];
+            return ['status' => 'invalid', 'description' => $descriptions[$retcode]];
+        }
+
+        // Cooldown (rate limited)
+        if ($retcode === -2016) {
+            return ['status' => 'cooldown', 'description' => 'Redemption on cooldown. Please wait and try again.'];
+        }
+
+        // Credentials error
+        if (in_array($retcode, [-1071, -1073, -1075])) {
+            $descriptions = [
+                -1071 => 'Invalid or expired cookies.',
+                -1073 => 'No game account bound to this HoYoLab account.',
+                -1075 => 'No character on this server.',
+            ];
+            return ['status' => 'credentials_error', 'description' => $descriptions[$retcode]];
+        }
+
+        return ['status' => 'unknown', 'description' => "Unknown retcode: {$retcode}"];
+    }
 }

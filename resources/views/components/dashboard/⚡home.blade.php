@@ -14,7 +14,14 @@ new #[Layout('layouts.dashboard')] #[Title('Dashboard')] class extends Component
     ];
     public $games = [];
     public $news = [];
-    public $dailyCheckIn = [];
+    public $redeemCodes = [];
+
+    // Game name → Game ID mapping for redeem code APIs
+    const GAME_IDS = [
+        'Genshin Impact' => 2,
+        'Honkai: Star Rail' => 6,
+        'Zenless Zone Zero' => 8,
+    ];
 
     public $builds = [['name' => 'Acheron', 'game' => 'Honkai: Star Rail', 'tier' => 'T0', 'role' => 'Main DPS', 'path' => 'Nihility', 'bg' => 'bg-purple-950/50'], ['name' => 'Arlecchino', 'game' => 'Genshin Impact', 'tier' => 'T0', 'role' => 'Main DPS', 'path' => 'Pyro', 'bg' => 'bg-red-950/50'], ['name' => 'Ellen Joe', 'game' => 'Zenless Zone Zero', 'tier' => 'S', 'role' => 'Attack', 'path' => 'Ice', 'bg' => 'bg-blue-950/50']];
 
@@ -67,6 +74,7 @@ new #[Layout('layouts.dashboard')] #[Title('Dashboard')] class extends Component
                 'recovery_formatted' => '?',
                 'daily_task_finished' => '?',
                 'daily_task_total' => '?',
+                'daily_checkin' => [],
             ];
 
             // Setup Dummy News Structure per Game
@@ -121,11 +129,94 @@ new #[Layout('layouts.dashboard')] #[Title('Dashboard')] class extends Component
                 // Fetch Daily Check-In data
                 $checkIn = $genshinService->getDailyCheckIn($cookie);
                 if (isset($checkIn['retcode']) && $checkIn['retcode'] === 0) {
-                    $this->dailyCheckIn = $checkIn;
+                    $game['daily_checkin'] = $checkIn;
                 }
             }
         }
         $this->games = $mappedGames;
+    }
+
+    /**
+     * Load redeem codes from Hoyolab + GamesRadar, filtering out already-redeemed codes.
+     *
+     * @param string $redeemedJson  JSON from localStorage, e.g. {"genshin":"AAA,BBB","starrail":"CCC"}
+     */
+    public function loadRedeemCodes(string $redeemedJson = '{}')
+    {
+        $hoyolabService = app(\App\Services\HoyolabService::class);
+        $gameRadarService = app(\App\Services\GameRadarService::class);
+
+        // Parse already-redeemed from localStorage
+        $redeemed = json_decode($redeemedJson, true) ?: [];
+
+        $allCodes = [];
+
+        foreach ($this->games as $game) {
+            $gameName = $game['name'];
+            $gameId = self::GAME_IDS[$gameName] ?? null;
+
+            if (!$gameId) {
+                continue;
+            }
+
+            // Storage key: lowercase, no spaces/colons
+            $storageKey = strtolower(str_replace([' ', ':', '-'], '', $gameName));
+            $redeemedCodes = [];
+            if (!empty($redeemed[$storageKey])) {
+                $redeemedCodes = array_map('trim', explode(',', $redeemed[$storageKey]));
+            }
+
+            $gameCodes = [];
+            $seenCodes = [];
+
+            // 1. Fetch from Hoyolab API
+            $hoyolabResult = $hoyolabService->parseByHoyolab($gameId);
+            if (isset($hoyolabResult['retcode']) && $hoyolabResult['retcode'] === 0) {
+                foreach ($hoyolabResult['codes'] as $code) {
+                    $upper = strtoupper(trim($code));
+                    if (!empty($upper) && !in_array($upper, $seenCodes) && !in_array($upper, $redeemedCodes)) {
+                        $gameCodes[] = ['code' => $upper, 'rewards' => ''];
+                        $seenCodes[] = $upper;
+                    }
+                }
+            }
+
+            // 2. Fetch from GamesRadar
+            $pocketResult = $gameRadarService->parseByGameRadar($gameId);
+            if (isset($pocketResult['retcode']) && $pocketResult['retcode'] === 0) {
+                foreach ($pocketResult['codes'] as $entry) {
+                    $upper = strtoupper(trim($entry['code']));
+                    if (empty($upper) || in_array($upper, $redeemedCodes)) {
+                        continue;
+                    }
+                    if (in_array($upper, $seenCodes)) {
+                        // Code already exists from Hoyolab, update rewards if available
+                        if (!empty($entry['rewards'])) {
+                            foreach ($gameCodes as &$existing) {
+                                if ($existing['code'] === $upper && empty($existing['rewards'])) {
+                                    $existing['rewards'] = $entry['rewards'];
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                    $gameCodes[] = ['code' => $upper, 'rewards' => $entry['rewards'] ?? ''];
+                    $seenCodes[] = $upper;
+                }
+            }
+
+            if (!empty($gameCodes)) {
+                $allCodes[$gameName] = [
+                    'codes' => $gameCodes,
+                    'color' => $game['color'],
+                    'icon_color' => $game['icon_color'],
+                    'icon_url' => $game['icon_url'],
+                    'storage_key' => $storageKey,
+                ];
+            }
+        }
+
+        $this->redeemCodes = $allCodes;
     }
 };
 ?>
@@ -143,6 +234,10 @@ new #[Layout('layouts.dashboard')] #[Title('Dashboard')] class extends Component
 
         // Trigger data load sending local storage purely to Backend Livewire
         $wire.loadData(cookie);
+
+        // Load redeem codes, passing already-redeemed from localStorage
+        let redeemed = localStorage.getItem('Redeem') || '{}';
+        $wire.loadRedeemCodes(redeemed);
     }
 }">
 
@@ -287,94 +382,161 @@ new #[Layout('layouts.dashboard')] #[Title('Dashboard')] class extends Component
                                 @endif
                             </span>
                         </div>
+
+                        {{-- Daily Check-In (inline) --}}
+                        @if (!empty($game['daily_checkin']) && !empty($game['daily_checkin']['today_reward']))
+                            @php $checkin = $game['daily_checkin']; @endphp
+                            <div class="mt-1 pt-4 border-t border-slate-700/40">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        Daily Check-In
+                                    </span>
+                                    <span class="text-[10px] text-slate-500 font-medium">Day {{ $checkin['today_day'] }}/{{ count($checkin['awards']) }}</span>
+                                </div>
+
+                                <div class="flex items-center gap-3 bg-slate-800/50 rounded-xl p-3">
+                                    {{-- Reward icon --}}
+                                    <div class="relative shrink-0">
+                                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center p-1.5">
+                                            <img src="{{ $checkin['today_reward']['icon'] }}"
+                                                alt="{{ $checkin['today_reward']['name'] }}"
+                                                class="w-full h-full object-contain" loading="lazy">
+                                        </div>
+                                        <span class="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-amber-500 text-[8px] font-bold text-black rounded-full leading-none">
+                                            x{{ $checkin['today_reward']['cnt'] }}
+                                        </span>
+                                    </div>
+
+                                    {{-- Info --}}
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-white truncate">{{ $checkin['today_reward']['name'] }}</p>
+                                        <p class="text-[10px] text-slate-400 mt-0.5">Today's Reward</p>
+                                    </div>
+
+                                    {{-- Action / Status --}}
+                                    @if ($checkin['is_checked_in'])
+                                        <span class="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-emerald-500/15 text-emerald-400 text-xs font-bold rounded-lg border border-emerald-500/25">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            Claimed
+                                        </span>
+                                    @else
+                                        <button type="button"
+                                            class="shrink-0 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-xs font-bold rounded-lg shadow-md shadow-amber-900/20 hover:shadow-amber-500/30 transition-all active:scale-95 flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            Check In
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             @endforeach
         </div>
     </section>
 
-    <!-- Daily Check-In Section -->
-    @if (!empty($dailyCheckIn) && !empty($dailyCheckIn['today_reward']))
-        <section name="daily-checkin">
+
+    <!-- Redeem Codes Section -->
+    @if (!empty($redeemCodes))
+        <section name="redeem-codes" x-data="{
+            redeemCode(code, storageKey) {
+                // Read existing redeemed data
+                let data = {};
+                try { data = JSON.parse(localStorage.getItem('Redeem') || '{}'); } catch(e) { data = {}; }
+
+                // Add code to the game's redeemed list
+                let existing = data[storageKey] ? data[storageKey].split(',').map(c => c.trim()) : [];
+                if (!existing.includes(code)) {
+                    existing.push(code);
+                }
+                data[storageKey] = existing.join(',');
+                localStorage.setItem('Redeem', JSON.stringify(data));
+
+                // Hide the card via Alpine
+                this.$refs['code_' + code]?.remove();
+
+                // Check if game group is now empty
+                this.$nextTick(() => {
+                    document.querySelectorAll('[data-game-group]').forEach(group => {
+                        if (group.querySelectorAll('[data-code-card]').length === 0) {
+                            group.remove();
+                        }
+                    });
+                });
+            }
+        }">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-bold text-white flex items-center">
-                    <svg class="w-6 h-6 mr-2 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd"
-                            d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                            clip-rule="evenodd"></path>
+                    <svg class="w-6 h-6 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
                     </svg>
-                    Daily Check-In
+                    Redeem Codes
                 </h2>
                 <span class="text-sm text-slate-400 font-medium">
-                    {{ date('F', mktime(0, 0, 0, $dailyCheckIn['month'], 1)) }} · Day {{ $dailyCheckIn['today_day'] }}
+                    {{ array_sum(array_map(fn($g) => count($g['codes']), $redeemCodes)) }} codes available
                 </span>
             </div>
 
-            <div class="bg-gradient-to-br from-[#1e293b]/70 to-[#0f172a]/90 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                {{-- Decorative glow --}}
-                <div class="absolute -top-16 -right-16 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                <div class="relative z-10 flex flex-col sm:flex-row items-center gap-6">
-                    {{-- Today's Reward Card --}}
-                    <div class="flex flex-col items-center gap-3 min-w-[140px]">
-                        <div class="relative">
-                            <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center p-3 shadow-lg shadow-amber-900/20">
-                                <img src="{{ $dailyCheckIn['today_reward']['icon'] }}"
-                                    alt="{{ $dailyCheckIn['today_reward']['name'] }}"
-                                    class="w-full h-full object-contain drop-shadow-[0_2px_8px_rgba(245,158,11,0.3)]" loading="lazy">
+            <div class="space-y-6">
+                @foreach ($redeemCodes as $gameName => $gameData)
+                    <div data-game-group class="bg-[#1e293b]/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl overflow-hidden">
+                        {{-- Game Header --}}
+                        <div class="flex items-center gap-3 px-5 py-3.5 bg-gradient-to-r {{ $gameData['color'] }}/30 border-b border-slate-700/40">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br {{ $gameData['color'] }} flex items-center justify-center p-0.5 shadow-sm overflow-hidden">
+                                <img src="{{ $gameData['icon_url'] }}" alt="{{ $gameName }}" class="w-full h-full object-cover rounded-[6px]" loading="lazy">
                             </div>
-                            <span class="absolute -top-2 -right-2 px-2 py-0.5 bg-amber-500 text-[10px] font-bold text-black rounded-full shadow-md">
-                                x{{ $dailyCheckIn['today_reward']['cnt'] }}
-                            </span>
+                            <h3 class="font-bold text-white text-sm">{{ $gameName }}</h3>
+                            <span class="ml-auto text-xs bg-slate-800/60 text-slate-300 px-2.5 py-1 rounded-full font-medium">{{ count($gameData['codes']) }} codes</span>
                         </div>
-                        <div class="text-center">
-                            <p class="text-white font-semibold text-sm">{{ $dailyCheckIn['today_reward']['name'] }}</p>
-                            <p class="text-slate-400 text-xs mt-0.5">Today's Reward</p>
+
+                        {{-- Code Cards --}}
+                        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            @foreach ($gameData['codes'] as $codeEntry)
+                                <div x-ref="code_{{ $codeEntry['code'] }}" data-code-card
+                                    class="bg-[#0b0f19]/60 border border-slate-700/40 rounded-xl p-4 flex flex-col gap-3 hover:border-slate-500/50 transition-all group">
+                                    {{-- Code --}}
+                                    <div class="flex items-center justify-between gap-2">
+                                        <code class="text-base font-bold text-white tracking-wider font-mono">{{ $codeEntry['code'] }}</code>
+                                        <button type="button"
+                                            @click="navigator.clipboard.writeText('{{ $codeEntry['code'] }}'); $dispatch('notify', {type: 'success', message: 'Code copied!'})"
+                                            class="shrink-0 p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-white transition-colors"
+                                            title="Copy code">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    {{-- Rewards --}}
+                                    @if (!empty($codeEntry['rewards']))
+                                        <p class="text-xs text-slate-400 leading-relaxed line-clamp-2">
+                                            <span class="text-slate-500">Rewards:</span> {{ $codeEntry['rewards'] }}
+                                        </p>
+                                    @else
+                                        <p class="text-xs text-slate-500 italic">Rewards not available</p>
+                                    @endif
+
+                                    {{-- Redeem Button --}}
+                                    <button type="button"
+                                        @click="redeemCode('{{ $codeEntry['code'] }}', '{{ $gameData['storage_key'] }}')"
+                                        class="w-full mt-auto py-2 bg-gradient-to-r {{ $gameData['color'] }} hover:opacity-90 text-white text-xs font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Redeem
+                                    </button>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
-
-                    {{-- Divider --}}
-                    <div class="hidden sm:block w-px h-28 bg-gradient-to-b from-transparent via-slate-600/50 to-transparent"></div>
-                    <div class="block sm:hidden w-full h-px bg-gradient-to-r from-transparent via-slate-600/50 to-transparent"></div>
-
-                    {{-- Status & Action --}}
-                    <div class="flex-1 flex flex-col items-center sm:items-start gap-4">
-                        @if ($dailyCheckIn['is_checked_in'])
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-emerald-400 font-bold text-lg">Claimed!</p>
-                                    <p class="text-slate-400 text-xs">You've already checked in today. Come back tomorrow!</p>
-                                </div>
-                            </div>
-                        @else
-                            <div>
-                                <p class="text-white font-bold text-lg">Ready to Check In!</p>
-                                <p class="text-slate-400 text-sm mt-1">Claim your daily reward before the server resets.</p>
-                            </div>
-                            <button type="button"
-                                class="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold rounded-xl shadow-lg shadow-amber-900/30 hover:shadow-amber-500/40 transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                Check In Now
-                            </button>
-                        @endif
-
-                        {{-- Progress hint --}}
-                        <div class="flex items-center gap-2 text-xs text-slate-500">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span>Day {{ $dailyCheckIn['today_day'] }} of {{ count($dailyCheckIn['awards']) }} this month</span>
-                        </div>
-                    </div>
-                </div>
+                @endforeach
             </div>
         </section>
     @endif
