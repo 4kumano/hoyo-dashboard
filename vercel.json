@@ -28,8 +28,8 @@
       "dest": "/public/js/"
     },
     {
-      "src": "/vendors/(.*)",
-      "dest": "/public/vendors/"
+      "src": "/vendor/(.*)",
+      "dest": "/public/vendor/"
     },
     {
       "src": "/(.*\\.js$)",
