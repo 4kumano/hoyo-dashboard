@@ -11,8 +11,16 @@ new #[Layout('layouts.app')] #[Title('Login - Hoyo Dashboard')] class extends Co
     public $errorMessage = '';
     public $isLogin = false;
 
+    public function updatedCookieVal($value)
+    {
+        $this->cookieVal = preg_replace('/\s+/', '', $value);
+    }
+
     public function saveCookie(HoyolabService $hoyolabService)
     {
+        // Format cookie menjadi 1 baris dengan menghapus spasi dan newline
+        $this->cookieVal = preg_replace('/\s+/', '', $this->cookieVal);
+
         if (trim($this->cookieVal) === '') {
             $this->errorMessage = 'Cookie tidak boleh kosong.';
             return;

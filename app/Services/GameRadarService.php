@@ -83,19 +83,76 @@ class GameRadarService
 
         $div = $divNodes->item(0);
 
-        // Find ALL <ul> inside that div
+        $codes = [];
+        $addedCodes = [];
+
+        // 1. Tangkap kode livestream dari header h2 "livestream codes"
+        $h2Nodes = $xpath->query('.//h2', $div);
+        $livestreamUl = null;
+        foreach ($h2Nodes as $h2) {
+            $text = strtolower($h2->textContent);
+            if (strpos($text, 'livestream') !== false && strpos($text, 'codes') !== false) {
+                // Temukan <ul> berikutnya setelah <h2> ini
+                $node = $h2->nextSibling;
+                while ($node) {
+                    if ($node->nodeName === 'ul') {
+                        $livestreamUl = $node;
+                        break;
+                    }
+                    if ($node->nodeName === 'h2') {
+                        break; // Stop jika menemukan <h2> baru
+                    }
+                    $node = $node->nextSibling;
+                }
+                break;
+            }
+        }
+
+        if ($livestreamUl) {
+            $liNodes = $xpath->query('.//li', $livestreamUl);
+            foreach ($liNodes as $li) {
+                $strongNodes = $xpath->query('.//strong', $li);
+                if ($strongNodes->length > 0) {
+                    $code = trim($strongNodes->item(0)->textContent);
+                    // Kode livestream kadang ada huruf kecil (mixed case)
+                    if (preg_match('/^[A-Za-z0-9]+$/', $code)) {
+                        $codeUpper = strtoupper($code);
+                        $fullText = trim($li->textContent);
+                        $rewards = '';
+                        $parts = preg_split('/\s*[–—\-]\s*/u', $fullText, 2);
+                        if (count($parts) >= 2) {
+                            $rewards = trim($parts[1]);
+                            $rewards = preg_replace('/\s*new!$/i', '', $rewards); // Hilangkan teks "new!"
+                        }
+
+                        if (!isset($addedCodes[$codeUpper])) {
+                            $codes[] = [
+                                'code' => $codeUpper, // Kirim sebagai uppercase agar seragam
+                                'rewards' => $rewards,
+                            ];
+                            $addedCodes[$codeUpper] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Tangkap kode-kode reguler dari ALL <ul> inside that div
         $ulNodes = $xpath->query('.//ul', $div);
-        if ($ulNodes->length === 0) {
+        if ($ulNodes->length === 0 && empty($codes)) {
             return [
                 'retcode' => -1,
                 'message' => 'Tidak dapat menemukan daftar kode (ul).',
             ];
         }
 
-        $codes = [];
-
         // Collect all <li> from all <ul>
         foreach ($ulNodes as $ul) {
+            // Hindari memproses ulang livestreamUl jika aturannya berbeda
+            if ($livestreamUl && $ul->isSameNode($livestreamUl)) {
+                continue;
+            }
+
             $liNodes = $xpath->query('.//li', $ul);
             foreach ($liNodes as $li) {
                 // Find <strong> inside this <li>
@@ -106,27 +163,33 @@ class GameRadarService
 
                 $strongText = trim($strongNodes->item(0)->textContent);
 
-                // Skip if not all uppercase (not a valid code)
+                // Skip if not all uppercase (not a valid regular code)
                 if ($strongText === '' || $strongText !== strtoupper($strongText) || !preg_match('/^[A-Z0-9]+$/', $strongText)) {
                     continue;
                 }
 
                 // Split on "/" and take the first part (clean up trailing paths)
                 $code = trim(explode('/', $strongText, 2)[0]);
+                $codeUpper = strtoupper($code);
+
+                if (isset($addedCodes[$codeUpper])) {
+                    continue; // Skip duplicate code
+                }
 
                 // Extract rewards: full text split by "–" (en-dash) or "-"
                 $fullText = trim($li->textContent);
                 $rewards = '';
-                $parts = preg_split('/\s*[–—]\s*/u', $fullText, 2);
+                $parts = preg_split('/\s*[–—\-]\s*/u', $fullText, 2);
                 if (count($parts) >= 2) {
                     $rewards = trim($parts[1]);
                 }
 
-                if (!empty($code)) {
+                if (!empty($codeUpper)) {
                     $codes[] = [
-                        'code' => $code,
+                        'code' => $codeUpper,
                         'rewards' => $rewards,
                     ];
+                    $addedCodes[$codeUpper] = true;
                 }
             }
         }
